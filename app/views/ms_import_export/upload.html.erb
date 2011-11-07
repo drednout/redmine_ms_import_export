@@ -1,0 +1,7 @@
+<h1>File has been uploaded successfully.</h1>
+<h2>Uploaded M$ Project task list:</h2>
+<table>
+<% @project_tasks.each do |task| %>
+  <tr><td><%= task["Name"] %></td></tr>
+<% end %>
+</table>

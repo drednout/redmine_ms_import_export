@@ -1,0 +1,6 @@
+<h1>MS project importer:</h1>
+<%= "Current project is " + @project.name %>
+<% form_for( :upload, {:url => {:action => 'upload'}, :html => { :id => 'upload', :multipart => true }}) do |f| %>
+  <%= f.file_field 'file_for_upload' %>
+  <%= f.submit( 'Upload', { :disable_with => 'Uploading...' } ) %>
+<% end %>
