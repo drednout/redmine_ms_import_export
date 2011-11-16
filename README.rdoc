@@ -1,3 +1,25 @@
 = ms_import_export
 
-Description goes here
+This is just a prototype of plugin which should be able
+to import MS Project files to redmine and also export them to
+external XML-file.
+
+Requirements:
+1. Supporting MS Project 2003/2007
+2. Doing its work correctly
+3. Be fast
+
+== External dependencies
+
+ruby (=1.8.7)
+libxml-ruby (>= 2.2.2)
+redmine (=1.2.1)
+
+== Installation steps
+#BIG TODO
+
+== TODO LIST
+1. Ability to import at least one project file and creating appropriating redmine entities
+2. Updating project in redmine from MS Project file
+3. Exporting data in MS Project like format
+4. Nice interface
