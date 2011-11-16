@@ -11,9 +11,9 @@ Requirements:
 
 == External dependencies
 
-ruby (=1.8.7)
-libxml-ruby (>= 2.2.2)
-redmine (=1.2.1)
+* ruby (=1.8.7)
+* libxml-ruby (>= 2.2.2)
+* redmine (=1.2.1)
 
 == Installation steps
 #BIG TODO
