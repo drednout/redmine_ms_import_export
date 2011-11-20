@@ -1,7 +1,45 @@
 <h1>File has been uploaded successfully.</h1>
-<h2>Uploaded M$ Project task list:</h2>
-<table>
+
+<h2>Project task list:</h2>
+<table border="1">
+  <tr>
+    <th>UID</th>
+    <th>ID</th>
+    <th>Name</th>
+    <th>Start</th>
+    <th>Finish</th>
+    <th>PercentComplete</th>
+    <th>OutlineLevel</th>
+  </tr>
 <% @project_tasks.each do |task| %>
-  <tr><td><%= task["Name"] %></td></tr>
+  <tr>
+    <td><%= task["UID"] %></td>
+    <td><%= task["ID"] %></td>
+    <td><%= task["Name"] %></td>
+    <td><%= task["Start"] %></td>
+    <td><%= task["Finish"] %></td>
+    <td><%= task["PercentComplete"] %></td>
+    <td><%= task["OutlineLevel"] %></td>
+  </tr>
+<% end %>
+</table>
+
+<h2>Project resources:</h2>
+<table border="1">
+  <tr>
+    <th>UID</th>
+    <th>ID</th>
+    <th>Name</th>
+    <th>Email</th>
+    <th>Group</th>
+  </tr>
+<% @project_resources.each do |task| %>
+  <tr>
+    <td><%= task["UID"] %></td>
+    <td><%= task["ID"] %></td>
+    <td><%= task["Name"] %></td>
+    <td><%= task["EmailAddress"] %></td>
+    <td><%= task["Group"] %></td>
+  </tr>
 <% end %>
 </table>

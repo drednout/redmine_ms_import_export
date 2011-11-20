@@ -1,0 +1,15 @@
+# Read about fixtures at http://ar.rubyonrails.org/classes/Fixtures.html
+one:
+  id: 1
+  ms_uid: 1
+  ms_id: 1
+  start: 2011-11-20 16:42:44
+  finish: 2011-11-20 16:42:44
+  outline_level: 1
+two:
+  id: 2
+  ms_uid: 1
+  ms_id: 1
+  start: 2011-11-20 16:42:44
+  finish: 2011-11-20 16:42:44
+  outline_level: 1
