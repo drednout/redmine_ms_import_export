@@ -92,6 +92,12 @@ class MsImportExportController < ApplicationController
         is_new_task = true
         ms_task = MsProjectTask.new
       end
+      if task['Name'].nil?
+        logger.error "save_imported_tasks: cant's save ms task " +\
+                      "with UID=#{task['UID']}, because task Name is nil"
+        next
+      end
+
       ms_task.ms_uid = task['UID']
       ms_task.ms_id = task['ID']
       ms_task.outline_level = task['OutlineLevel']
@@ -109,20 +115,32 @@ class MsImportExportController < ApplicationController
       end
       issue.project = @project
       issue.author = User.current
-      issue.subject = task['Name']
+      issue.subject = task['Name'].slice(0, 255)
       issue.description = task['Notes']
       issue.tracker_id = @tracker.id
       issue.start_date = ms_task.start
       issue.due_date = ms_task.finish
       #issue.done_ratio = task['PercentComplete']
 
-      #BIG TODO: saving error processing
+      #TODO: notify user somehow about errors when importing
       issue_save_res = issue.save
       logger.debug "save_imported_tasks: issue_save_res is #{issue_save_res}"
       logger.debug "save_imported_tasks: issue.errors are #{issue.errors.full_messages}"
+      if not issue_save_res
+        #TODO: raise normal redmine exception
+        logger.error "save_imported_tasks: cant's save ms task " +\
+                      "with UID=#{task['UID']}  as redmine issue, Name is `#{task['Name']}` "
+        next
+      end
 
       ms_task.redmine_issue_id = issue.id if is_new_task
       ms_task.save
+      if not issue_save_res
+        #TODO: raise normal redmine exception
+        logger.error "save_imported_tasks: cant's save ms task " +\
+                      "with UID=#{task['UID']}, Name is `#{task['Name']}` "
+        next
+      end
 
       parent_outline_number = self.get_parent_outline_number(task['OutlineNumber'])
       if parent_outline_number
