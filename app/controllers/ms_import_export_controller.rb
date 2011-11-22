@@ -17,11 +17,22 @@ class MsImportExportController < ApplicationController
     @project_resources = []
     @project_assignments = []
     uploaded_file = params[:upload][:file_for_upload]
+    uploaded_file_path = Rails.root.join('public', 'uploads', uploaded_file.original_filename)
+    File.open(uploaded_file_path, 'w') do |f|
+      f.write(uploaded_file.read)
+    end
 
-    parser = XML::Parser.string(uploaded_file.read())
+    parser = XML::Parser.file(uploaded_file_path)
     doc = parser.parse
     ns = 'project'
     doc.root.namespaces.default_prefix = ns
+
+    #TODO: refactoring: variable schema
+    xpath_project_name = doc.find("/#{ns}:Project/#{ns}:Name", 
+                                  '#{ns}:http://schemas.microsoft.com/project')
+    #TODO: check project name correctness
+    @ms_project_name = xpath_project_name[0].first.content
+
 
     resources = doc.find("//#{ns}:Resource", '#{ns}:http://schemas.microsoft.com/project')
     resources.each do |res|
@@ -84,10 +95,18 @@ class MsImportExportController < ApplicationController
   end
 
   def save_imported_tasks
+    ms_project = MsProjectName.find_by_ms_project_name(@ms_project_name)
+    if ms_project.nil?
+      ms_project = MsProjectName.create(:ms_project_name => @ms_project_name, 
+                                        :redmine_project_id => @project.id)
+    end
     logger.info("save_imported: @project is #{@project}")
     @project_tasks.each do |task|
       is_new_task = false
-      ms_task =  MsProjectTask.find_by_ms_uid(task['UID']) 
+      #ms_task =  MsProjectTask.find_by_ms_uid(task['UID']) 
+      ms_task = MsProjectTask.find(:first, :conditions => 
+                                   ["uniq_ms_project_id = ? AND ms_uid = ?",
+                                    ms_project.id, task['UID']])
       if ms_task.nil?
         is_new_task = true
         ms_task = MsProjectTask.new
@@ -104,6 +123,7 @@ class MsImportExportController < ApplicationController
       ms_task.start = task['Start']
       ms_task.finish = task['Finish']
       ms_task.orig_outline_number = task['OutlineNumber']
+      ms_task.uniq_ms_project_id = ms_project.id
 
       if is_new_task
         issue = Issue.new
@@ -120,7 +140,7 @@ class MsImportExportController < ApplicationController
       issue.tracker_id = @tracker.id
       issue.start_date = ms_task.start
       issue.due_date = ms_task.finish
-      #issue.done_ratio = task['PercentComplete']
+      issue.done_ratio = task['PercentComplete'] if task['PercentComplete']
 
       #TODO: notify user somehow about errors when importing
       issue_save_res = issue.save
@@ -145,7 +165,10 @@ class MsImportExportController < ApplicationController
       parent_outline_number = self.get_parent_outline_number(task['OutlineNumber'])
       if parent_outline_number
         logger.debug("save_imported_tasks: parent_outline_number is #{parent_outline_number}")
-        parent_ms_task = MsProjectTask.find_by_orig_outline_number(parent_outline_number)
+        #parent_ms_task = MsProjectTask.find_by_orig_outline_number(parent_outline_number)
+        parent_ms_task = MsProjectTask.find(:first, :conditions => 
+                                            ["uniq_ms_project_id = ? AND orig_outline_number = ?",
+                                             ms_project.id, parent_outline_number])
         ms_task.parent_task_id = parent_ms_task.ms_uid
         issue.parent_issue_id = parent_ms_task.redmine_issue_id
         #TODO: avoiding of double saving
@@ -156,7 +179,15 @@ class MsImportExportController < ApplicationController
       if task.has_key?("Predecessors") and not task["Predecessors"].empty?
         task["Predecessors"].each do |pred_task_from_xml|
           logger.debug "save_imported_tasks: First task predcessors is #{pred_task_from_xml}"
-          pred_ms_task = MsProjectTask.find_by_ms_uid(pred_task_from_xml["PredecessorUID"])
+          #pred_ms_task = MsProjectTask.find_by_ms_uid(pred_task_from_xml["PredecessorUID"])
+          pred_ms_task = MsProjectTask.find(:first, :conditions => 
+                                            ["uniq_ms_project_id = ? AND ms_uid = ?",
+                                             ms_project.id, pred_task_from_xml['PredecessorUID']])
+          if pred_ms_task.nil?
+            logger.error "save_imported_tasks: can't find ms predcessor with PredecessorUID" +\
+                         " #{pred_task_from_xml['PredecessorUID']} when importing task with UID #{task['UID']}"
+            next
+          end
           pred_redmine_issue = Issue.find(pred_ms_task.redmine_issue_id)
           logger.debug "save_imported_tasks: pred_redmine_issue is #{pred_redmine_issue}"
           relation = IssueRelation.new
