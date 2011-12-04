@@ -9,9 +9,24 @@ class MsImportExportController < ApplicationController
     @project = Project.find(params[:project_id])
   end
 
+  def get_tracker_info
+    top_tracker = Setting.plugin_redmine_ms_import_export['tracker_top']    
+    tracker_1 = Setting.plugin_redmine_ms_import_export['tracker_1']    
+    tracker_2 = Setting.plugin_redmine_ms_import_export['tracker_2']    
+    tracker_others = Setting.plugin_redmine_ms_import_export['tracker_others']    
+    #specifies the tracker which will be used for imported task in depend 
+    #of OutlineLevel(hash's key). All tasks with OutlineLevel > 2 will be imported 
+    #to tracker @tracker_others
+    tracker_map = {
+      1 => top_tracker,
+      2 => tracker_1,
+      3 => tracker_2,
+    }
+    return tracker_map, tracker_others
+  end
+
   def upload
     @project = Project.find(params[:project_id])
-    @tracker = Tracker.find(:first, :conditions => [ "name = ?", "MS Project"])
 
     @project_tasks = []
     @project_resources = []
@@ -96,6 +111,7 @@ class MsImportExportController < ApplicationController
 
   def save_imported_tasks
     ms_project = MsProjectName.find_by_ms_project_name(@ms_project_name)
+    tracker_map, tracker_others = self.get_tracker_info
     if ms_project.nil?
       ms_project = MsProjectName.create(:ms_project_name => @ms_project_name, 
                                         :redmine_project_id => @project.id)
@@ -116,6 +132,26 @@ class MsImportExportController < ApplicationController
                       "with UID=#{task['UID']}, because task Name is nil"
         next
       end
+
+      outline_level = task['OutlineLevel'].to_i()
+      logger.debug("save_imported_tasks: outline_level is #{outline_level}")
+      logger.debug("save_imported_tasks: tracker_map is #{tracker_map}")
+      if tracker_map.has_key?(outline_level)
+        tracker_name = tracker_map[outline_level] 
+      else
+        tracker_name = tracker_others
+      end
+      logger.debug("save_imported_tasks: tracker_name is #{tracker_name}")
+      @tracker = Tracker.find(:first, :conditions => [ "name = ?", tracker_name])
+      if @tracker.nil?
+        flash[ :error ] = "Invalid tracker name #{tracker_name} in plugin settings. Please fix it and try again."
+      end
+      if flash[ :error ]
+        render( { :action => :new } )
+        flash.delete( :error )                                                                                            
+        return                                                                                                            
+      end
+
 
       ms_task.ms_uid = task['UID']
       ms_task.ms_id = task['ID']

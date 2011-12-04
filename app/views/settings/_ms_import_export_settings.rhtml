@@ -1,3 +1,6 @@
   <% html_title "MS import/export plugin." -%>
-  <p><label>Tracker for project files</label><%= text_field_tag 'settings[tracker]', @settings['tracker'] %></p>
+  <p><label>Tracker for top project tasks</label><%= text_field_tag 'settings[tracker_top]', @settings['tracker_top'] %></p>
+  <p><label>Tracker for first-level project tasks</label><%= text_field_tag 'settings[tracker_1]', @settings['tracker_1'] %></p>
+  <p><label>Tracker for second-level project tasks</label><%= text_field_tag 'settings[tracker_2]', @settings['tracker_2'] %></p>
+  <p><label>Tracker for other project tasks</label><%= text_field_tag 'settings[tracker_others]', @settings['tracker_others'] %></p>
 
