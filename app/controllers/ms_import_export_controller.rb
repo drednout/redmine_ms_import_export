@@ -30,7 +30,9 @@ class MsImportExportController < ApplicationController
 
     @project_tasks = []
     @project_resources = []
+    @resource_hash_by_uid = {}
     @project_assignments = []
+    @assignment_hash_by_taskuid = {}
     uploaded_file = params[:upload][:file_for_upload]
     uploaded_file_path = Rails.root.join('public', 'uploads', uploaded_file.original_filename)
     File.open(uploaded_file_path, 'w') do |f|
@@ -59,6 +61,7 @@ class MsImportExportController < ApplicationController
             end
         end
         @project_resources.push(user_record)
+        @resource_hash_by_uid[user_record['UID']] = user_record
     end
 
     tasks = doc.find("//#{ns}:Task", '#{ns}:http://schemas.microsoft.com/project')
@@ -97,8 +100,14 @@ class MsImportExportController < ApplicationController
             end
         end
         @project_assignments.push(assign_record)
-    end
 
+        task_uid = assign_record['TaskUID']
+        if not @assignment_hash_by_taskuid.has_key?(task_uid)
+          @assignment_hash_by_taskuid[task_uid] = []
+        end
+       @assignment_hash_by_taskuid[task_uid].push(assign_record)
+    end
+    logger.debug "upload: @assignment_hash_by_taskuid is #{@assignment_hash_by_taskuid.to_xml}"
     self.save_imported_tasks()
   end
 
@@ -107,6 +116,46 @@ class MsImportExportController < ApplicationController
     return nil if outline_array.size == 1
     outline_array.pop()
     return outline_array.join(".")
+  end
+
+  def get_assigned_redmine_user(task)
+      return nil unless @assignment_hash_by_taskuid.has_key?(task['UID'])
+      assign_list = @assignment_hash_by_taskuid[task['UID']]
+      logger.info "get_assigned_redmine_user: assignment capacity is #{assign_list.size}"
+      #we can assign only one person per task in redmine, do this for first assignee
+      assign_record = assign_list.first
+      resource_record = @resource_hash_by_uid[assign_record['ResourceUID']]
+      if resource_record.nil?
+        logger.warn "Can't find resource record with UID #{assign_record['ResourceUID']}"
+        return nil
+      end
+      redmine_user = User.find_by_mail(resource_record['EmailAddress'])
+      if redmine_user.nil?
+        logger.info "Can't find redmine user with email #{resource_record['EmailAddress']}"
+      else
+        return redmine_user
+      end
+      assign_field_name = Setting.plugin_redmine_ms_import_export['assign_custom_field']    
+      if assign_field_name.nil? or assign_field_name.empty?
+        logger.error "Please specify custom field for assignment users in plugin settings"
+        return nil 
+      end
+      custom_field = CustomField.find_by_name(assign_field_name)
+      logger.debug "custom_field is #{custom_field}"
+      if custom_field.class.name != "UserCustomField"
+        logger.error "Invalid custom field type #{custom_field.type}"
+        return nil
+      end
+      custom_values = CustomValue.find(:all, :conditions => 
+                                      ["custom_field_id = ?", custom_field.id])
+      custom_values.each do |custom_value|
+        if custom_value.value == resource_record['EmailAddress']
+          redmine_user = User.find_by_id(custom_value.customized_id)
+          logger.debug "get_assigned_redmine_user: user found by custom field: #{redmine_user}"
+          return redmine_user
+        end
+      end
+      return nil
   end
 
   def save_imported_tasks
@@ -119,7 +168,6 @@ class MsImportExportController < ApplicationController
     logger.info("save_imported: @project is #{@project}")
     @project_tasks.each do |task|
       is_new_task = false
-      #ms_task =  MsProjectTask.find_by_ms_uid(task['UID']) 
       ms_task = MsProjectTask.find(:first, :conditions => 
                                    ["uniq_ms_project_id = ? AND ms_uid = ?",
                                     ms_project.id, task['UID']])
@@ -177,6 +225,11 @@ class MsImportExportController < ApplicationController
       issue.start_date = ms_task.start
       issue.due_date = ms_task.finish
       issue.done_ratio = task['PercentComplete'] if task['PercentComplete']
+
+      assigned_user = get_assigned_redmine_user(task)
+      issue.assigned_to = assigned_user unless assigned_user.nil?
+
+
 
       #TODO: notify user somehow about errors when importing
       issue_save_res = issue.save
