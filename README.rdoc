@@ -18,6 +18,10 @@ Requirements:
 == Installation steps
 #BIG TODO
 
+== License
+This plugin is released under GPLv3 licence, the license text can
+be found at http://www.gnu.org/copyleft/gpl.html.
+
 == TODO LIST
 1. Ability to import at least one project file and creating appropriating redmine entities
 2. Updating project in redmine from MS Project file
