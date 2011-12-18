@@ -176,9 +176,9 @@ class MsImportExportController < ApplicationController
         ms_task = MsProjectTask.new
       end
       if task['Name'].nil?
-        logger.error "save_imported_tasks: cant's save ms task " +\
-                      "with UID=#{task['UID']}, because task Name is nil"
-        next
+        logger.warn "save_imported_tasks: name of ms task " +\
+                    "with UID=#{task['UID']} is nil, replaced with default value"
+        task['Name'] = 'TODO: Empty name'
       end
 
       outline_level = task['OutlineLevel'].to_i()
@@ -258,11 +258,13 @@ class MsImportExportController < ApplicationController
         parent_ms_task = MsProjectTask.find(:first, :conditions => 
                                             ["uniq_ms_project_id = ? AND orig_outline_number = ?",
                                              ms_project.id, parent_outline_number])
-        ms_task.parent_task_id = parent_ms_task.ms_uid
-        issue.parent_issue_id = parent_ms_task.redmine_issue_id
-        #TODO: avoiding of double saving
-        issue.save
-        ms_task.save
+        if not parent_ms_task.nil?
+          ms_task.parent_task_id = parent_ms_task.ms_uid
+          issue.parent_issue_id = parent_ms_task.redmine_issue_id
+          #TODO: avoiding of double saving
+          issue.save
+          ms_task.save
+        end
       end
 
       if task.has_key?("Predecessors") and not task["Predecessors"].empty?
