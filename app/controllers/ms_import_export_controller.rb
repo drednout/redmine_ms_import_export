@@ -112,6 +112,7 @@ class MsImportExportController < ApplicationController
   end
 
   def get_parent_outline_number(outline_number)
+    return nil if outline_number.nil?
     outline_array = outline_number.split(".")
     return nil if outline_array.size == 1
     outline_array.pop()
