@@ -69,7 +69,7 @@ class MsImportExportController < ApplicationController
         task_record = {}
         ['UID', 'ID', 'Start', 'Finish', 
          'Name', 'PercentComplete', 'OutlineLevel',
-         'Milestone', 'Notes', 'OutlineNumber'].each do |task_attr|
+         'Milestone', 'Notes', 'OutlineNumber', 'IsNull'].each do |task_attr|
             xpath_attr = task.find(ns + ":" +task_attr)
             if not xpath_attr.empty?
                 task_record[task_attr] = xpath_attr.first.content
@@ -168,6 +168,16 @@ class MsImportExportController < ApplicationController
     end
     logger.info("save_imported: @project is #{@project}")
     @project_tasks.each do |task|
+      logger.debug("save_imported_tasks: IsNull is #{task['IsNull']}")
+      if task['IsNull']
+          is_null = task['IsNull'].to_i
+          if is_null == 1
+              logger.debug("save_imported_tasks: task with UID #{task['UID']} is skipped because of IsNull")
+              #deleted task, skip it
+              next
+          end
+      end
+
       is_new_task = false
       ms_task = MsProjectTask.find(:first, :conditions => 
                                    ["uniq_ms_project_id = ? AND ms_uid = ?",
@@ -185,6 +195,7 @@ class MsImportExportController < ApplicationController
       outline_level = task['OutlineLevel'].to_i()
       logger.debug("save_imported_tasks: outline_level is #{outline_level}")
       logger.debug("save_imported_tasks: tracker_map is #{tracker_map}")
+
       if tracker_map.has_key?(outline_level)
         tracker_name = tracker_map[outline_level] 
       else
